@@ -1,0 +1,1 @@
+return {["type"]="leaf",["views"]={[1]={["type"]="doc",["scroll"]={["x"]=0,["y"]=0},["selection"]={[1]=1,[2]=1,[3]=1,[4]=1},["active"]=false,["filename"]="init.lua",["text"]=false},[2]={["type"]="doc",["scroll"]={["x"]=0,["y"]=0},["selection"]={[1]=31,[2]=17,[3]=31,[4]=17},["active"]=true,["filename"]="screen.lua",["text"]=false}},["active_view"]=2}

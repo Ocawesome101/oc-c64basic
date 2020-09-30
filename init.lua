@@ -2,9 +2,9 @@
 
 _G.sys = {}
 
-sys.gpu = component.proxy(component.list("gpu", true)())
+sys.gpu = component.proxy((component.list("gpu", true)()))
 sys.mounts = {[0] = component.proxy(computer.getBootAddress())}
-sys.gpu.bind(component.list("screen", true)())
+sys.gpu.bind((component.list("screen", true)()))
 
 function sys.loadfile(drv, file)
   checkArg(1, file, "string")
@@ -22,7 +22,8 @@ function sys.loadfile(drv, file)
   end
 end
 
-function sys.dofile(d,f) return sys.loadfile(d,f)() end
+function sys.dofile(d,f) return assert(sys.loadfile(d,f))() end
 
+sys.dofile(0, "ram.lua")
 sys.dofile(0, "screen.lua")
 sys.dofile(0, "basic.lua")
