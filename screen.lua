@@ -38,7 +38,7 @@ local function drawchar(index, code, color)
   end
   local draw = sys.font[code] or sys.font[0]
   local x, y = computeXY(index)
-  local fg, bg = palette[color], palette[sys.ram.get(53281)]
+  local fg, bg = palette[sys.ram.get(647) == 1 and color or sys.ram.get(646)], palette[sys.ram.get(53281)]
   if colsw then
     fg, bg = bg, fg
   end
@@ -72,6 +72,7 @@ for i=55296, 56295, 1 do
   sys.ram.set(i, 14)
 end
 sys.ram.set(53281, 6)
+sys.ram.set(646, 14)
 
 screen.refresh()
 --[[while true do
