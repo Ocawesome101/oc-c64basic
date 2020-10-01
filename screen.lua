@@ -24,7 +24,6 @@ local palette = {
 }
 
 function computeXY(index)
-  index = index + 0
   local y = math.floor(index / 40)
   local x = index % 40
   return x*4, y*2+1 -- displayed font is 4x2 chars or 8x8 pixels

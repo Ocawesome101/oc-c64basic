@@ -10,7 +10,7 @@ local gsub = {
 
 -- cursor position stored locally because i can't figure out where the C64 does it
 local cpos = 0
-local function scroll()
+function scroll()
   sys.gpu.copy(1, 1, 160, 50, 0, -2)
   for i=1024, 2023, 1 do
     sys.ram.set(i, sys.ram.get(i+40))
@@ -18,20 +18,28 @@ local function scroll()
   for i=55296, 56295, 1 do
     sys.ram.set(i, sys.ram.get(i+40))
   end
+  cpos = cpos - 40
   sys.screen.refresh()
 end
 
 local map
 local function write(text)
   for c in text:lower():gmatch(".") do
-    sys.ram.set(1024 + cpos, map(string.byte(c)) or 0)
-    cpos = cpos + 1
+    sys.ram.set(1024 + cpos, map(string.byte(c)) or 32)
+    if cpos >= 999 then
+      scroll()
+    else
+      cpos = cpos + 1
+    end
   end
 end
 
 function print(t)
   write(tostring(t))
   cpos = cpos + (40 - (cpos % 40))
+  if cpos >= 999 then
+    scroll()
+  end
   sys.screen.refresh()
 end
 
@@ -79,6 +87,10 @@ sys.gpu.fill(1, 1, 160, 50, "A")
 
 print("OPEN LUA V0")
 while true do
+  if cpos >= 960 then
+    error(cpos)
+    scroll()
+  end
   print("")
   print("READY.")
   pcall(load(read(), "=input", "bt", _G))
