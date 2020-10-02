@@ -4,21 +4,32 @@ Current file: src/main.s
 
 000000r 1               .CODE
 000000r 1               
-000000r 1               printstr:
+000000r 1               main:
 000000r 1               	; init stack pointer
 000000r 1  A2 FF        	LDX #$FF
 000002r 1  9A           	TXS
-000003r 1               	; init loop
-000003r 1  A2 00        	LDX #$00
-000005r 1               printstr_loop:
-000005r 1  BD rr rr     	LDA hello,X
-000008r 1  20 D2 FF     	JSR $FFD2 ; use the C64 call named CHROUT
-00000Br 1  E8           	INX
-00000Cr 1  C9 00        	CMP #$00
-00000Er 1  D0 F5        	BNE printstr_loop
-000010r 1  60           	RTS
-000011r 1               
-000011r 1               .DATA
+000003r 1               
+000003r 1  A2 rr        	LDX #<hello
+000005r 1  A0 rr        	LDY #>hello
+000007r 1  20 rr rr     	JSR printstr
+00000Ar 1  00           	BRK
+00000Br 1               
+00000Br 1               printstr:
+00000Br 1               	; init loop
+00000Br 1  86 17        	STX $17
+00000Dr 1  84 18        	STY $18
+00000Fr 1  A0 00        	LDY #$00
+000011r 1               printstr_loop:
+000011r 1  B1 17        	LDA ($17),Y
+000013r 1  C8           	INY
+000014r 1  C9 00        	CMP #$00
+000016r 1  F0 06        	BEQ printstr_end
+000018r 1  20 D2 FF     	JSR $FFD2 ; call CHROUT
+00001Br 1  4C rr rr     	JMP printstr_loop
+00001Er 1               printstr_end:
+00001Er 1  60           	RTS
+00001Fr 1               
+00001Fr 1               .DATA
 000000r 1  BF 4E 20 20  hello: .asciiz "\n    **** commodore 64 basic v2 ****\n\n", " 64k ram system  ", "38911 basic bytes free"
 000004r 1  20 20 2A 2A  
 000008r 1  2A 2A 20 43  

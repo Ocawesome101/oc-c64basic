@@ -85,6 +85,7 @@ end
 
 local mount = sys.mounts[0]
 local handle = assert(mount.open("/c64/init.bin", "r"))
+local logHandle = assert(mount.open("/c64/cpu.log", "w"))
 local str = ""
 repeat
 	local chunk = mount.read(handle, math.huge)
@@ -125,18 +126,34 @@ local hle = {
 	end
 }
 
+-- shortcuts for performance
+local peek = sys.ram.get
+local poke = sys.ram.set
+
+local function debug(str)
+	mount.write(logHandle, str .. "\n")
+end
+
 local function push(value)
-	sys.ram.set(0x100 + sp, value)
+	poke(0x100 + sp, value)
 	sp = (sp - 1) & 0xFF
+	debug(string.format("(stack) push 0x%x", value))
 end
 
 local function pop()
 	sp = (sp + 1) & 0xFF
-	return sys.ram.get(0x100 + sp)
+	return peek(0x100 + sp)
 end
 
 local function readAbsoluteAddr(addr)
-	return (sys.ram.get(addr+1) << 8) | sys.ram.get(addr)
+	return (peek(addr+1) << 8) | peek(addr)
+end
+
+local function readIndirectY(addr)
+	local zp = peek(addr)
+	local low = peek(zp)
+	local high = peek(zp+1)
+	return ((high << 8) | low) + y
 end
 
 local function cmp(value)
@@ -148,6 +165,7 @@ end
 local operations = {
 	[0x00] = function() -- BRK (implied)
 		--os.exit(0)
+		--error(string.format("BRK at 0x%x", pc))
 		while true do
 			computer.pullSignal()
 		end
@@ -167,39 +185,85 @@ local operations = {
 	[0x48] = function() -- PHA (implied)
 		push(a)
 	end,
+	[0x4C] = function() -- JMP (absolute)
+		local addr = readAbsoluteAddr(pc+1)
+		debug(string.format("JMP $%x", addr))
+		pc = addr - 1
+	end,
 	[0x60] = function() -- RTS (implied)
 		local high = pop()
 		local low = pop()
+		debug("RTS")
 		pc = (high << 8) | low + 1
 	end,
 	[0x68] = function() -- PLA (implied)
 		a = pop()
 	end,
+	[0x84] = function() -- STY (zeropage)
+		pc = pc + 1
+		local addr = peek(pc)
+		poke(addr, y)
+	end,
+	[0x85] = function() -- STA (zeropage)
+		pc = pc + 1
+		local addr = peek(pc)
+		poke(addr, a)
+	end,
+	[0x86] = function() -- STX (zeropage)
+		pc = pc + 1
+		local addr = peek(pc)
+		poke(addr, x)
+	end,
+	[0x8C] = function() -- STY (absolute)
+		local addr = readAbsoluteAddr(pc+1)
+		pc = pc + 2
+		poke(addr, y)
+	end,
+	[0x8D] = function() -- STA (absolute)
+		local addr = readAbsoluteAddr(pc+1)
+		pc = pc + 2
+		poke(addr, a)
+	end,
+	[0x8E] = function() -- STX (absolute)
+		local addr = readAbsoluteAddr(pc+1)
+		pc = pc + 2
+		poke(addr, x)
+	end,
 	[0x9A] = function() -- TXS (implied)
 		sp = x
 	end,
+	[0xA0] = function() -- LDY (immediate)
+		pc = pc + 1
+		y = peek(pc)
+	end,
 	[0xA2] = function() -- LDX (immediate)
 		pc = pc + 1
-		x = sys.ram.get(pc)
+		x = peek(pc)
+	end,
+	[0xB1] = function() -- LDA (indirect indexed)
+		pc = pc + 1
+		local addr = readIndirectY(pc)
+		a = peek(addr)
+		debug("lda " .. string.format("%x", addr) .. " ( y = " .. y .. ")")
 	end,
 	[0xBA] = function() -- TSX (implied)
 		x = sp
 	end,
 	[0xBD] = function() -- LDA (absolute,X)
-		local addr = readAbsoluteAddr(pc+1) + x
+		local addr = readAbsoluteAddr(pc+1) + xs
 		pc = pc + 2
-		a = sys.ram.get(addr)
+		a = peek(addr)
 	end,
 	[0xC8] = function() -- INY (implied)
 		y = y + 1
 	end,
 	[0xC9] = function() -- CMP (immediate)
 		pc = pc + 1
-		cmp(sys.ram.get(pc))
+		cmp(peek(pc))
 	end,
 	[0xD0] = function() -- BNE (relative)
 		pc = pc + 1
-		local rel = string.unpack("i1", string.char(sys.ram.get(pc)))
+		local rel = string.unpack("i1", string.char(peek(pc)))
 		if not fz then
 			pc = pc + rel
 		end
@@ -209,7 +273,7 @@ local operations = {
 	end,
 	[0xF0] = function() -- BEQ (relative)
 		pc = pc + 1
-		local rel = string.unpack("i1", string.char(sys.ram.get(pc)))
+		local rel = string.unpack("i1", string.char(peek(pc)))
 		if fz then
 			pc = pc + rel
 		end
@@ -222,12 +286,12 @@ while true do
 	    scroll()
 	end
 
-	local op = sys.ram.get(pc)
-	--print(string.format("%x: 0x%x", pc, op))
+	local op = peek(pc)
+	debug(string.format("%x: 0x%x", pc, op))
 	if operations[op] then
 		operations[op]()
 	else
-		print("Unknown opcode (" .. string.format("0x%x") .. ") !")
+		error("Unknown opcode (" .. string.format("0x%x, pc = %x", op, pc) .. ") !")
 	end
 	a = a & 0xFF
 	x = x & 0xFF

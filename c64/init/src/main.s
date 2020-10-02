@@ -1,17 +1,28 @@
 .CODE
 
-printstr:
+main:
 	; init stack pointer
 	LDX #$FF
 	TXS
+
+	LDX #<hello
+	LDY #>hello
+	JSR printstr
+	BRK
+
+printstr:
 	; init loop
-	LDX #$00
+	STX $17
+	STY $18
+	LDY #$00
 printstr_loop:
-	LDA hello,X
-	JSR $FFD2 ; call CHROUT
-	INX
+	LDA ($17),Y
+	INY
 	CMP #$00
-	BNE printstr_loop
+	BEQ printstr_end
+	JSR $FFD2 ; call CHROUT
+	JMP printstr_loop
+printstr_end:
 	RTS
 
 .DATA
