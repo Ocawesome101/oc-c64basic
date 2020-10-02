@@ -23,6 +23,30 @@ local palette = {
   [15]= 0xe0e0e0
 }
 
+local lfg, lbg = palette[1], palette[0] -- last foreground and background, to reduce needed component calls
+
+-- memory innefficient: yes. faster: also yes, so if we have the ram lets do it
+local screenChars, screenColsfg, screenColsbg, getSetCharBuffer
+if computer.freeMemory() > 8000 then -- 8k ought to be enough
+  -- yes tables exist but they succ memory, and were dealing with single bytes here so anything else is overkill
+  screenChars = string.rep(string.char(0), 1000)
+  screenColsfg = string.rep(string.char(0), 1000)
+  screenColsbg = string.rep(string.char(0), 1000)
+
+  getSetCharBuffer = function(index, code, fgi, bgi) -- get/set/check whether this character needs to be changed
+    local sc, sfg, sbg = screenChars:byte(index+1), screenColsfg:byte(index+1), screenColsbg:byte(index+2)
+    if sc == code and sfg == fgi and sbg == bgi then
+    --if sc == code then
+      return false
+    end
+    screenChars = screenChars:sub(1,index+1) .. string.char(code % 256) .. screenChars:sub(index+3)
+    screenColsfg = screenColsfg:sub(1,index+1) .. string.char(fgi % 256) .. screenColsfg:sub(index+3)
+    screenColsbg = screenColsbg:sub(1,index+1) .. string.char(bgi % 256) .. screenColsbg:sub(index+3)
+    --sys.gpu.set(1,1,tostring(#screenChars)..","..tostring(#screenColsfg)..","..tostring(#screenColsbg).."              ")
+    return true
+  end
+end
+
 function computeXY(index)
   local y = math.floor(index / 40)
   local x = index % 40
@@ -30,22 +54,35 @@ function computeXY(index)
 end
 
 local function drawchar(index, code, color)
+  local doDraw = true
   local colsw
-  if code > 127 then
-    colsw = true
-    code = code - 128
+  local fgi, bgi = sys.ram.get(647) == 1 and color or sys.ram.get(646), sys.ram.get(53281)
+  if screenChars ~= nil then
+    doDraw = getSetCharBuffer(index, code, fgi, bgi)
   end
-  local draw = sys.font[code] or sys.font[0]
-  local x, y = computeXY(index)
-  local fg, bg = palette[sys.ram.get(647) == 1 and color or sys.ram.get(646)], palette[sys.ram.get(53281)]
-  if colsw then
-    fg, bg = bg, fg
+  if doDraw then
+    if code > 127 then
+      colsw = true
+      code = code - 128
+    end
+    local fg, bg = palette[fgi], palette[bgi]
+    local draw = sys.font[code] or sys.font[0]
+    local x, y = computeXY(index)
+    if colsw then
+      fg, bg = bg, fg
+    end
+    if fg ~= lfg then
+      sys.gpu.setForeground(fg)
+    end
+    if bg ~= lbg then
+      sys.gpu.setBackground(bg)
+    end
+    lfg = fg
+    lbg = bg
+    --component.proxy(component.list("sandbox")()).log(x, y, fg, bg, color, code, draw)
+    sys.gpu.set(x+1, y, unicode.sub(draw, 1,4))
+    sys.gpu.set(x+1, y+1, unicode.sub(draw, 6,9))
   end
-  sys.gpu.setForeground(fg)
-  sys.gpu.setBackground(bg)
-  --component.proxy(component.list("sandbox")()).log(x, y, fg, bg, color, code, draw)
-  sys.gpu.set(x+1, y, unicode.sub(draw, 1,4))
-  sys.gpu.set(x+1, y+1, unicode.sub(draw, 6))
 end
 
 local buf
@@ -55,6 +92,7 @@ function screen.refresh()
     buf = buf or sys.gpu.allocateBuffer(160, 50)
     sys.gpu.setActiveBuffer(buf)
   end
+  --sys.gpu.fill(1, 1, 160, 50, "A") -- testing
   for i=1024, 2023, 1 do
     drawchar(i - 1024, sys.ram.get(i), sys.ram.get(55296 + i - 1024))
   end
@@ -64,16 +102,19 @@ function screen.refresh()
   end
 end
 
-for i=1024, 2023, 1 do
-  sys.ram.set(i, 32)
+function screen.clear()
+  for i=1024, 2023, 1 do
+    sys.ram.set(i, 32)
+  end
+  for i=55296, 56295, 1 do
+    sys.ram.set(i, 14)
+  end
+  sys.ram.set(53281, 6)
+  sys.ram.set(646, 14)
+  screen.refresh()
 end
-for i=55296, 56295, 1 do
-  sys.ram.set(i, 14)
-end
-sys.ram.set(53281, 6)
-sys.ram.set(646, 14)
 
-screen.refresh()
+screen.clear()
 --[[while true do
   computer.pullSignal(2)
   for i=1024, 2023, 1 do
