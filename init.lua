@@ -24,6 +24,6 @@ end
 
 function sys.dofile(d,f) return assert(sys.loadfile(d,f))() end
 
-sys.dofile(0, "ram.lua")
+sys.dofile(0, "mapper.lua")
 sys.dofile(0, "screen.lua")
 sys.dofile(0, "c64/6502.lua")

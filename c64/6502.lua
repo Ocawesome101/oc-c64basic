@@ -77,8 +77,6 @@ end
 
 -- 6502 emulator
 
---sys.gpu.fill(1, 1, 160, 50, "A")
-
 local kernalRom = {}
 local ram = {}
 for i=1, 0xFFFF do
@@ -94,23 +92,12 @@ repeat
 until not chunk
 mount.close(handle)
 for i=1, #str do
-	kernalRom[i] = string.byte(str:sub(i, i))
+	sys.rom[i] = string.byte(str:sub(i, i))
 end
 
 -- yield to avoid "too long without yielding" errors
 local function yield()
 	coroutine.yield()
-end
-
-function peek(addr)
-	if addr >= 0xE000 then
-		return kernalRom[addr - 0xE000 + 1] or 0
-	end
-	return ram[addr + 1] or 0
-end
-
-function poke(addr, value)
-	ram[addr + 1] = value & 0xFF
 end
 
 -- registers
@@ -139,17 +126,17 @@ local hle = {
 }
 
 local function push(value)
-	poke(0x100 + sp, value)
+	sys.ram.set(0x100 + sp, value)
 	sp = (sp - 1) & 0xFF
 end
 
 local function pop()
 	sp = (sp + 1) & 0xFF
-	return peek(0x100 + sp)
+	return sys.ram.get(0x100 + sp)
 end
 
 local function readAbsoluteAddr(addr)
-	return (peek(addr+1) << 8) | peek(addr)
+	return (sys.ram.get(addr+1) << 8) | sys.ram.get(addr)
 end
 
 local function cmp(value)
@@ -193,7 +180,7 @@ local operations = {
 	end,
 	[0xA2] = function() -- LDX (immediate)
 		pc = pc + 1
-		x = peek(pc)
+		x = sys.ram.get(pc)
 	end,
 	[0xBA] = function() -- TSX (implied)
 		x = sp
@@ -201,18 +188,18 @@ local operations = {
 	[0xBD] = function() -- LDA (absolute,X)
 		local addr = readAbsoluteAddr(pc+1) + x
 		pc = pc + 2
-		a = peek(addr)
+		a = sys.ram.get(addr)
 	end,
 	[0xC8] = function() -- INY (implied)
 		y = y + 1
 	end,
 	[0xC9] = function() -- CMP (immediate)
 		pc = pc + 1
-		cmp(peek(pc))
+		cmp(sys.ram.get(pc))
 	end,
 	[0xD0] = function() -- BNE (relative)
 		pc = pc + 1
-		local rel = string.unpack("i1", string.char(peek(pc)))
+		local rel = string.unpack("i1", string.char(sys.ram.get(pc)))
 		if not fz then
 			pc = pc + rel
 		end
@@ -222,7 +209,7 @@ local operations = {
 	end,
 	[0xF0] = function() -- BEQ (relative)
 		pc = pc + 1
-		local rel = string.unpack("i1", string.char(peek(pc)))
+		local rel = string.unpack("i1", string.char(sys.ram.get(pc)))
 		if fz then
 			pc = pc + rel
 		end
@@ -235,7 +222,7 @@ while true do
 	    scroll()
 	end
 
-	local op = peek(pc)
+	local op = sys.ram.get(pc)
 	--print(string.format("%x: 0x%x", pc, op))
 	if operations[op] then
 		operations[op]()
