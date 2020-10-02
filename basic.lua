@@ -84,11 +84,12 @@ local function read()
 end
 
 sys.gpu.fill(1, 1, 160, 50, "A")
+sys.screen.clear()
 
 print("OPEN LUA V0")
 while true do
   if cpos >= 960 then
-    error(cpos)
+    --error(cpos)
     scroll()
   end
   print("")

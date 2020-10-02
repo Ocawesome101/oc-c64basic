@@ -11,8 +11,8 @@ function sys.ram.get(index)
 end
 
 function sys.ram.set(index, byte)
-  if byte > 255 then
-    error("invalid RAM request: byte cannot be >255")
+  if byte > 255 or byte < 0 then
+    error("invalid RAM request: byte cannot be >255 or <0")
   end
   ram[index] = byte
 end
