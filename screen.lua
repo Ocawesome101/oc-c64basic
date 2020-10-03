@@ -34,9 +34,9 @@ if computer.freeMemory() > 8000 then -- 8k ought to be enough
   screenColsbg = string.rep(string.char(0), 1000)
 
   getSetCharBuffer = function(index, code, fgi, bgi) -- get/set/check whether this character needs to be changed
+    index = index % 1000
     local sc, sfg, sbg = screenChars:byte(index+1), screenColsfg:byte(index+1), screenColsbg:byte(index+2)
     if sc == code and sfg == fgi and sbg == bgi then
-    --if sc == code then
       return false
     end
     screenChars = screenChars:sub(1,index+1) .. string.char(code % 256) .. screenChars:sub(index+3)
@@ -61,12 +61,8 @@ local function drawchar(index, code, color)
     doDraw = getSetCharBuffer(index, code, fgi, bgi)
   end
   if doDraw then
-    if code > 127 then
-      colsw = true
-      code = code - 128
-    end
     local fg, bg = palette[fgi], palette[bgi]
-    local draw = sys.font[code] or sys.font[0]
+    local draw = sys.font[code] or sys.font[63] or sys.font[0]
     local x, y = computeXY(index)
     if colsw then
       fg, bg = bg, fg
@@ -82,6 +78,9 @@ local function drawchar(index, code, color)
     --component.proxy(component.list("sandbox")()).log(x, y, fg, bg, color, code, draw)
     sys.gpu.set(x+1, y, unicode.sub(draw, 1,4))
     sys.gpu.set(x+1, y+1, unicode.sub(draw, 6,9))
+  --else
+  --  local x, y = computeXY(index)
+  --  sys.gpu.set(x+1, y, string.char(code+64)) -- testing
   end
 end
 
@@ -92,7 +91,7 @@ function screen.refresh()
     buf = buf or sys.gpu.allocateBuffer(160, 50)
     sys.gpu.setActiveBuffer(buf)
   end
-  --sys.gpu.fill(1, 1, 160, 50, "A") -- testing
+  --sys.gpu.fill(1, 1, 160, 50, " ") -- this shouldnt be needed, nor should it work, but it is/does
   for i=1024, 2023, 1 do
     drawchar(i - 1024, sys.ram.get(i), sys.ram.get(55296 + i - 1024))
   end
@@ -111,7 +110,16 @@ function screen.clear()
   end
   sys.ram.set(53281, 6)
   sys.ram.set(646, 14)
+  screenChars = string.rep(string.char(0), 1000)
+  screenColsfg = string.rep(string.char(0), 1000)
+  screenColsbg = string.rep(string.char(0), 1000)
   screen.refresh()
+end
+
+function screen.clearbuffer()
+  screenChars = string.rep(string.char(0), 1000)
+  screenColsfg = string.rep(string.char(0), 1000)
+  screenColsbg = string.rep(string.char(0), 1000)
 end
 
 screen.clear()

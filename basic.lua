@@ -11,14 +11,24 @@ local gsub = {
 -- cursor position stored locally because i can't figure out where the C64 does it
 local cpos = 0
 function scroll()
-  sys.gpu.copy(1, 1, 160, 50, 0, -2)
+  --sys.gpu.copy(1, 1, 160, 50, 0, -2)
+  --sys.gpu.fill(1, 49, 160, 2, " ")
   for i=1024, 2023, 1 do
-    sys.ram.set(i, sys.ram.get(i+40))
+    if i > 2023-40 then
+      sys.ram.set(i, 32)
+    else
+      sys.ram.set(i, sys.ram.get(i+40))
+    end
   end
   for i=55296, 56295, 1 do
-    sys.ram.set(i, sys.ram.get(i+40))
+    if i > 56295-40 then
+      sys.ram.set(i, 14)
+    else
+      sys.ram.set(i, sys.ram.get(i+40))
+    end
   end
   cpos = cpos - 40
+  sys.screen.clearbuffer() -- very slow but it works
   sys.screen.refresh()
 end
 
@@ -68,10 +78,12 @@ local function read()
     write(buf.."\160 ")
     sys.screen.refresh()
     local key, char = getkey()
+    --sys.gpu.set(1,1,tostring(key)..","..tostring(char)..","..tostring(cpos).."              ")
     if char == "\13" then
       cpos = sc
       write(buf .. "  ")
       print("")
+      sys.screen.refresh()
       return buf
     elseif char == "\8" then
       if #buf > 0 then
