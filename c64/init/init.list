@@ -1,0 +1,66 @@
+ca65 V2.18 - N/A
+Main file   : src/main.s
+Current file: src/main.s
+
+000000r 1               .CODE
+000000r 1               
+000000r 1               main:
+000000r 1               	; init stack pointer
+000000r 1  A2 FF        	LDX #$FF
+000002r 1  9A           	TXS
+000003r 1               
+000003r 1  A2 rr        	LDX #<hello
+000005r 1  A0 rr        	LDY #>hello
+000007r 1  20 rr rr     	JSR printstr
+00000Ar 1               
+00000Ar 1  A2 rr        	LDX #<ready
+00000Cr 1  A0 rr        	LDY #>ready
+00000Er 1  20 rr rr     	JSR printstr
+000011r 1               l:
+000011r 1  20 rr rr     	JSR input
+000014r 1  20 rr rr     	JSR skip_line
+000017r 1  4C rr rr     	JMP l
+00001Ar 1  00           	BRK
+00001Br 1               
+00001Br 1               input:
+00001Br 1               	; loop while a != CR
+00001Br 1  20 CF FF     	JSR $FFCF ; call CHRIN
+00001Er 1  C9 0D        	CMP #$0D
+000020r 1  F0 06        	BEQ input_end
+000022r 1  20 D2 FF     	JSR $FFD2 ; print the inputed character
+000025r 1  4C rr rr     	JMP input
+000028r 1               input_end:
+000028r 1  60           	RTS
+000029r 1               
+000029r 1               skip_line:
+000029r 1  38           	SEC
+00002Ar 1  20 F0 FF     	JSR $FFF0 ; call PLOT to get cursor position
+00002Dr 1  A0 00        	LDY #$00 ; reset x position
+00002Fr 1  E8           	INX ; y position + 1
+000030r 1  18           	CLC
+000031r 1  20 F0 FF     	JSR $FFF0 ; set cursor position
+000034r 1  60           	RTS
+000035r 1               
+000035r 1               printstr:
+000035r 1               	; init loop
+000035r 1  86 17        	STX $17
+000037r 1  84 18        	STY $18
+000039r 1  A0 00        	LDY #$00
+00003Br 1               printstr_loop:
+00003Br 1  B1 17        	LDA ($17),Y
+00003Dr 1  C8           	INY
+00003Er 1  C9 00        	CMP #$00
+000040r 1  F0 06        	BEQ printstr_end
+000042r 1  20 D2 FF     	JSR $FFD2 ; call CHROUT
+000045r 1  4C rr rr     	JMP printstr_loop
+000048r 1               printstr_end:
+000048r 1  60           	RTS
+000049r 1               
+000049r 1               .DATA
+000000r 1  BF 4E 20 20  hello: .asciiz "\n    **** commodore 64 basic v2 ****\n\n", " 64k ram system  ", "38911 basic bytes free"
+000004r 1  20 20 2A 2A  
+000008r 1  2A 2A 20 43  
+000051r 1  BF 4E BF 4E  ready: .asciiz "\n\nready.\n\n"
+000055r 1  52 45 41 44  
+000059r 1  59 2E BF 4E  
+00005Fr 1               
