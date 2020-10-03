@@ -12,7 +12,9 @@ main:
 	LDX #<ready
 	LDY #>ready
 	JSR printstr
+l:
 	JSR input
+	JMP l
 	BRK
 
 input:

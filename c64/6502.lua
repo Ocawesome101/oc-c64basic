@@ -2,6 +2,20 @@
 
 -- cursor position stored locally because i can't figure out where the C64 does it
 local cpos = 0
+local eventQueue = {}
+
+local function pullEvent(timeout)
+	local sig = table.pack(computer.pullSignal(timeout or math.huge))
+	table.insert(eventQueue, sig)
+end
+
+local function pokeEvent()
+	if #eventQueue == 0 then
+		pullEvent()
+	end
+	return table.remove(eventQueue, 1)
+end
+
 function scroll()
   sys.gpu.copy(1, 1, 160, 50, 0, -2)
   for i=1024, 2023, 1 do
@@ -45,7 +59,7 @@ end
 
 local function getkey()
   while true do
-    local sig = table.pack(computer.pullSignal())
+    local sig = pokeEvent()
     -- TODO: blink
     if sig[1] == "key_down" then
       return map(sig[3]), string.char(sig[3])
@@ -99,7 +113,7 @@ end
 
 -- yield to avoid "too long without yielding" errors
 local function yield()
-	coroutine.yield()
+	pullEvent(0) -- this yields without discarding any event
 end
 
 -- registers
@@ -115,8 +129,9 @@ local fc, fz, fi, fd, fb, fv, fn = false, false, false, false, false, false, fal
 -- High Level Emulation of the Kernal
 local hle = {
 	[0xFFCF] = function() -- CHRIN
-		local key = getkey()
-		a = key
+		local key, char = getkey()
+		a = string.byte(char)
+		x = key
 	end,
 	[0xFFD2] = function() -- CHROUT
 		if a == 191 then
@@ -127,7 +142,6 @@ local hle = {
 			write(string.char(a))
 		end
 		sys.screen.refresh()
-		yield()
 	end
 }
 
@@ -286,6 +300,7 @@ local operations = {
 	end,
 }
 
+local lastYield = computer.uptime()
 while true do
 	-- TODO: yield at some time to receive events for interrupts and proper CHRIN routine
 	if cpos >= 960 then
@@ -299,6 +314,10 @@ while true do
 		operations[op]()
 	else
 		error("Unknown opcode (" .. string.format("0x%x, pc = %x", op, pc) .. ") !")
+	end
+	if computer.uptime() > lastYield + 1 then -- one second passed since last yield
+		lastYield = computer.uptime()
+		yield()
 	end
 	a = a & 0xFF
 	x = x & 0xFF
