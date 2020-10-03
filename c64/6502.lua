@@ -142,6 +142,14 @@ local hle = {
 			write(string.char(a))
 		end
 		sys.screen.refresh()
+	end,
+	[0xFFF0] = function() -- PLOT
+		if fc then
+			x = math.floor(cpos / 40)
+			y = cpos % 40
+		else
+			cpos = x * 40 + y
+		end
 	end
 }
 
@@ -190,6 +198,9 @@ local operations = {
 			computer.pullSignal()
 		end
 	end,
+	[0x18] = function() -- CLC (implied)
+		fc = false
+	end,
 	[0x20] = function() -- JSR (absolute)
 		local addr = readAbsoluteAddr(pc+1)
 		pc = pc + 2
@@ -201,6 +212,9 @@ local operations = {
 			push((pc & 0xFF00) >> 8)
 			pc = addr - 1
 		end
+	end,
+	[0x38] = function() -- SEC (implied)
+		fc = true
 	end,
 	[0x48] = function() -- PHA (implied)
 		push(a)

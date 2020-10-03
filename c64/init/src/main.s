@@ -14,6 +14,7 @@ main:
 	JSR printstr
 l:
 	JSR input
+	JSR skip_line
 	JMP l
 	BRK
 
@@ -25,6 +26,15 @@ input:
 	JSR $FFD2 ; print the inputed character
 	JMP input
 input_end:
+	RTS
+
+skip_line:
+	SEC
+	JSR $FFF0 ; call PLOT to get cursor position
+	LDY #$00 ; reset x position
+	INX ; y position + 1
+	CLC
+	JSR $FFF0 ; set cursor position
 	RTS
 
 printstr:
