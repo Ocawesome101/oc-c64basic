@@ -12,25 +12,43 @@ Current file: src/main.s
 000003r 1  A2 rr        	LDX #<hello
 000005r 1  A0 rr        	LDY #>hello
 000007r 1  20 rr rr     	JSR printstr
-00000Ar 1  00           	BRK
-00000Br 1               
-00000Br 1               printstr:
-00000Br 1               	; init loop
-00000Br 1  86 17        	STX $17
-00000Dr 1  84 18        	STY $18
-00000Fr 1  A0 00        	LDY #$00
-000011r 1               printstr_loop:
-000011r 1  B1 17        	LDA ($17),Y
-000013r 1  C8           	INY
-000014r 1  C9 00        	CMP #$00
-000016r 1  F0 06        	BEQ printstr_end
-000018r 1  20 D2 FF     	JSR $FFD2 ; call CHROUT
-00001Br 1  4C rr rr     	JMP printstr_loop
-00001Er 1               printstr_end:
-00001Er 1  60           	RTS
-00001Fr 1               
-00001Fr 1               .DATA
+00000Ar 1               
+00000Ar 1  A2 rr        	LDX #<ready
+00000Cr 1  A0 rr        	LDY #>ready
+00000Er 1  20 rr rr     	JSR printstr
+000011r 1  20 rr rr     	JSR input
+000014r 1  00           	BRK
+000015r 1               
+000015r 1               input:
+000015r 1               	; loop while a != CR
+000015r 1  20 CF FF     	JSR $FFCF ; call CHRIN
+000018r 1  C9 0D        	CMP #$0D
+00001Ar 1  F0 06        	BEQ input_end
+00001Cr 1  20 D2 FF     	JSR $FFD2 ; print the inputed character
+00001Fr 1  4C rr rr     	JMP input
+000022r 1               input_end:
+000022r 1  60           	RTS
+000023r 1               
+000023r 1               printstr:
+000023r 1               	; init loop
+000023r 1  86 17        	STX $17
+000025r 1  84 18        	STY $18
+000027r 1  A0 00        	LDY #$00
+000029r 1               printstr_loop:
+000029r 1  B1 17        	LDA ($17),Y
+00002Br 1  C8           	INY
+00002Cr 1  C9 00        	CMP #$00
+00002Er 1  F0 06        	BEQ printstr_end
+000030r 1  20 D2 FF     	JSR $FFD2 ; call CHROUT
+000033r 1  4C rr rr     	JMP printstr_loop
+000036r 1               printstr_end:
+000036r 1  60           	RTS
+000037r 1               
+000037r 1               .DATA
 000000r 1  BF 4E 20 20  hello: .asciiz "\n    **** commodore 64 basic v2 ****\n\n", " 64k ram system  ", "38911 basic bytes free"
 000004r 1  20 20 2A 2A  
 000008r 1  2A 2A 20 43  
-000050r 1               
+000051r 1  BF 4E BF 4E  ready: .asciiz "\n\nready.\n\n"
+000055r 1  52 45 41 44  
+000059r 1  59 2E BF 4E  
+00005Fr 1               

@@ -46,6 +46,7 @@ end
 local function getkey()
   while true do
     local sig = table.pack(computer.pullSignal())
+    -- TODO: blink
     if sig[1] == "key_down" then
       return map(sig[3]), string.char(sig[3])
     end
@@ -113,6 +114,10 @@ local fc, fz, fi, fd, fb, fv, fn = false, false, false, false, false, false, fal
 
 -- High Level Emulation of the Kernal
 local hle = {
+	[0xFFCF] = function() -- CHRIN
+		local key = getkey()
+		a = key
+	end,
 	[0xFFD2] = function() -- CHROUT
 		if a == 191 then
 			--write('\r')
@@ -166,6 +171,7 @@ local operations = {
 	[0x00] = function() -- BRK (implied)
 		--os.exit(0)
 		--error(string.format("BRK at 0x%x", pc))
+		sys.screen.refresh()
 		while true do
 			computer.pullSignal()
 		end
@@ -281,6 +287,7 @@ local operations = {
 }
 
 while true do
+	-- TODO: yield at some time to receive events for interrupts and proper CHRIN routine
 	if cpos >= 960 then
 	    error(cpos)
 	    scroll()
