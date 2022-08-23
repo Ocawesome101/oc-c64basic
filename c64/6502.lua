@@ -17,7 +17,7 @@ local function pokeEvent()
 	return table.remove(eventQueue, 1)
 end
 
-function scroll()
+local function scroll()
 	sys.gpu.copy(1, 1, 160, 50, 0, -2)
 	for i=1024, 2023, 1 do
 		sys.ram.set(i, sys.ram.get(i+40))
@@ -27,68 +27,6 @@ function scroll()
 	end
 	cpos = cpos - 40
 	sys.screen.refresh()
-end
-
-local map
-local function write(text)
-	for c in text:lower():gmatch(".") do
-		sys.ram.set(1024 + cpos, map(string.byte(c)) or 32)
-		if cpos >= 960 then
-			scroll()
-		else
-			cpos = cpos + 1
-		end
-	end
-end
-
-function print(t)
-	write(tostring(t))
-	cpos = cpos + (40 - (cpos % 40))
-	if cpos >= 960 then
-		scroll()
-	end
-	sys.screen.refresh()
-end
-
-map = function(k)
-	if k >= 97 and k <= 122 then
-		return k - 96
-	else
-		return k
-	end
-end
-
-local function getkey()
-	while true do
-		local sig = pokeEvent()
-		-- TODO: blink
-		if sig[1] == "key_down" then
-			return map(sig[3]), string.char(sig[3])
-		end
-	end
-end
-
-local function read()
-	local buf = ""
-	local sc = cpos
-	while true do
-		cpos = sc
-		write(buf.."\160 ")
-		sys.screen.refresh()
-		local key, char = getkey()
-		if char == "\13" then
-			cpos = sc
-			write(buf .. "  ")
-			print("")
-			return buf
-		elseif char == "\8" then
-			if #buf > 0 then
-				buf = buf:sub(0, -2)
-			end
-		elseif char ~= "\0" then
-			buf = buf .. char
-		end
-	end
 end
 
 -- 6502 emulator
@@ -736,8 +674,8 @@ local lastIrq = computer.uptime()
 while true do
 	-- TODO: yield at some time to receive events for interrupts and proper CHRIN routine
 	if cpos >= 960 then
-			--error(cpos)
-			scroll()
+		--error(cpos)
+		scroll()
 	end
 	local uptime = computer.uptime()
 
