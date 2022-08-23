@@ -3,7 +3,6 @@
 -- cursor position stored locally because i can't figure out where the C64 does it
 local cpos = 0
 local eventQueue = {}
-local ENABLE_LOG = true
 
 local function pullEvent(timeout)
 	local sig = table.pack(computer.pullSignal(timeout or math.huge))
@@ -111,14 +110,7 @@ local fc, fz, fi, fd, fb, fv, fn = false, false, true, false, false, false, fals
 -- shortcuts for performance
 local peek = sys.ram.get
 local poke = sys.ram.set
-
-local function debug(str)
-	if ENABLE_LOG and sys.ocemu then
-		sys.ocemu.log(str)
-	elseif logHandle then
-		mount.write(logHandle, str .. "\n")
-	end
-end
+local debug = sys.debug
 
 local function push(value)
 	poke(0x100 + sp, value & 0xFF)
@@ -390,6 +382,7 @@ local operations = {
 		pc = pc + 1
 		local addr = peek(pc)
 		poke(addr, a)
+		debug(string.format("STA $%x", addr))
 	end,
 	[0x86] = function() -- STX (zeropage)
 		pc = pc + 1
@@ -409,16 +402,19 @@ local operations = {
 		local addr = readAbsoluteAddr(pc+1)
 		pc = pc + 2
 		poke(addr, y)
+		debug(string.format("STY $%x (absolute)", addr))
 	end,
 	[0x8D] = function() -- STA (absolute)
 		local addr = readAbsoluteAddr(pc+1)
 		pc = pc + 2
 		poke(addr, a)
+		debug(string.format("STA $%x (absolute)", addr))
 	end,
 	[0x8E] = function() -- STX (absolute)
 		local addr = readAbsoluteAddr(pc+1)
 		pc = pc + 2
 		poke(addr, x)
+		debug(string.format("STX $%x (absolute)", addr))
 	end,
 	[0x90] = function() -- BCC (relative)
 		pc = pc + 1
@@ -450,6 +446,7 @@ local operations = {
 		local addr = readAbsoluteAddr(pc+1) + y
 		pc = pc + 2
 		poke(addr, a)
+		debug(string.format("= STA $%x (absolute,Y)", addr))
 	end,
 	[0x9A] = function() -- TXS (implied)
 		sp = x
@@ -458,6 +455,7 @@ local operations = {
 		local addr = readAbsoluteAddr(pc+1) + x
 		pc = pc + 2
 		poke(addr, a)
+		debug(string.format("= STA $%x (absolute,X)", addr))
 	end,
 	[0xA0] = function() -- LDY (immediate)
 		pc = pc + 1
