@@ -2,10 +2,27 @@
 
 _G.sys = {}
 
+sys.ocemu = component.proxy((component.list("ocemu", true)()))
 sys.gpu = component.proxy((component.list("gpu", true)()))
 sys.mounts = {[0] = component.proxy(computer.getBootAddress())}
 sys.gpu.bind((component.list("screen", true)()))
 
+-- optimise setBackground and setForeground (this saves a bit of call budget)
+local _setBackground = sys.gpu.setBackground
+local _setForeground = sys.gpu.setForeground
+function sys.gpu.setBackground(value)
+  if sys.gpu.getBackground() ~= value then
+    _setBackground(value)
+  end
+end
+
+function sys.gpu.setForeground(value)
+  if sys.gpu.getForeground() ~= value then
+    _setForeground(value)
+  end
+end
+
+-- loadfile
 function sys.loadfile(drv, file)
   checkArg(1, file, "string")
   local handle = assert(sys.mounts[drv].open(file))

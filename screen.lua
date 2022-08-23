@@ -3,7 +3,7 @@
 sys.dofile(0, "font.lua")
 
 local screen = {}
--- color palette taken from VICE with no CRT emuation filter
+-- color palette taken from VICE with no CRT emulation filter
 local palette = {
   [0] = 0x000000,
   [1] = 0xffffff,
@@ -48,17 +48,23 @@ local function drawchar(index, code, color)
   sys.gpu.set(x+1, y+1, unicode.sub(draw, 6))
 end
 
+screen.editedChars = {}
+for i=1024, 2023 do screen.editedChars[i] = true end
+
 local buf
 -- XXX: this will be slow with GPU buffers and painfully so without.
 function screen.refresh()
-  if sys.gpu.bitblt then -- we have buffer capability
+  if sys.gpu.bitblt and false then -- we have buffer capability
     buf = buf or sys.gpu.allocateBuffer(160, 50)
     sys.gpu.setActiveBuffer(buf)
   end
   for i=1024, 2023, 1 do
-    drawchar(i - 1024, sys.ram.get(i), sys.ram.get(55296 + i - 1024))
+    if screen.editedChars[i] == true then
+      drawchar(i - 1024, sys.ram.get(i), sys.ram.get(55296 + i - 1024))
+    end
   end
-  if sys.gpu.bitblt then
+  screen.editedChars = {}
+  if sys.gpu.bitblt and false then
     sys.gpu.bitblt(0, 1, 1, 160, 50, buf)
     sys.gpu.setActiveBuffer(0)
   end

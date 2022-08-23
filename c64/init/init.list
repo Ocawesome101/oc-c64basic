@@ -9,58 +9,116 @@ Current file: src/main.s
 000000r 1  A2 FF        	LDX #$FF
 000002r 1  9A           	TXS
 000003r 1               
-000003r 1  A2 rr        	LDX #<hello
-000005r 1  A0 rr        	LDY #>hello
-000007r 1  20 rr rr     	JSR printstr
-00000Ar 1               
-00000Ar 1  A2 rr        	LDX #<ready
-00000Cr 1  A0 rr        	LDY #>ready
-00000Er 1  20 rr rr     	JSR printstr
-000011r 1               l:
-000011r 1  20 rr rr     	JSR input
-000014r 1  20 rr rr     	JSR skip_line
-000017r 1  4C rr rr     	JMP l
-00001Ar 1  00           	BRK
-00001Br 1               
-00001Br 1               input:
-00001Br 1               	; loop while a != CR
-00001Br 1  20 CF FF     	JSR $FFCF ; call CHRIN
-00001Er 1  C9 0D        	CMP #$0D
-000020r 1  F0 06        	BEQ input_end
-000022r 1  20 D2 FF     	JSR $FFD2 ; print the inputed character
-000025r 1  4C rr rr     	JMP input
-000028r 1               input_end:
-000028r 1  60           	RTS
-000029r 1               
-000029r 1               skip_line:
-000029r 1  38           	SEC
-00002Ar 1  20 F0 FF     	JSR $FFF0 ; call PLOT to get cursor position
-00002Dr 1  A0 00        	LDY #$00 ; reset x position
-00002Fr 1  E8           	INX ; y position + 1
-000030r 1  18           	CLC
-000031r 1  20 F0 FF     	JSR $FFF0 ; set cursor position
-000034r 1  60           	RTS
-000035r 1               
-000035r 1               printstr:
-000035r 1               	; init loop
-000035r 1  86 17        	STX $17
-000037r 1  84 18        	STY $18
-000039r 1  A0 00        	LDY #$00
-00003Br 1               printstr_loop:
-00003Br 1  B1 17        	LDA ($17),Y
-00003Dr 1  C8           	INY
-00003Er 1  C9 00        	CMP #$00
-000040r 1  F0 06        	BEQ printstr_end
-000042r 1  20 D2 FF     	JSR $FFD2 ; call CHROUT
-000045r 1  4C rr rr     	JMP printstr_loop
-000048r 1               printstr_end:
-000048r 1  60           	RTS
-000049r 1               
-000049r 1               .DATA
-000000r 1  BF 4E 20 20  hello: .asciiz "\n    **** commodore 64 basic v2 ****\n\n", " 64k ram system  ", "38911 basic bytes free"
+000003r 1  20 rr rr     	JSR init_basic
+000006r 1               
+000006r 1  A2 rr        	LDX #<hello
+000008r 1  A0 rr        	LDY #>hello
+00000Ar 1  20 rr rr     	JSR printstr
+00000Dr 1               	; use BASIC-ROM to print ready
+00000Dr 1  A9 rr        	LDA #>ready
+00000Fr 1  A0 rr        	LDY #<ready
+000011r 1  20 1E AB     	JSR $AB1E
+000014r 1               	; go on
+000014r 1  A2 rr        	LDX #<ready
+000016r 1  A0 rr        	LDY #>ready
+000018r 1               l:
+000018r 1  20 rr rr     	JSR printstr
+00001Br 1  20 rr rr     	JSR input
+00001Er 1  20 rr rr     	JSR skip_line
+000021r 1  4C rr rr     	JMP l
+000024r 1  00           	BRK
+000025r 1               
+000025r 1               input:
+000025r 1               	; loop while a != CR
+000025r 1  20 CF FF     	JSR $FFCF ; call CHRIN
+000028r 1  C9 0D        	CMP #$0D
+00002Ar 1  F0 06        	BEQ input_end
+00002Cr 1  20 D2 FF     	JSR $FFD2 ; print the inputed character
+00002Fr 1  4C rr rr     	JMP input
+000032r 1               input_end:
+000032r 1  60           	RTS
+000033r 1               
+000033r 1               skip_line:
+000033r 1  38           	SEC
+000034r 1  20 F0 FF     	JSR $FFF0 ; call PLOT to get cursor position
+000037r 1  A0 00        	LDY #$00 ; reset x position
+000039r 1  E8           	INX ; y position + 1
+00003Ar 1  18           	CLC
+00003Br 1  20 F0 FF     	JSR $FFF0 ; set cursor position
+00003Er 1  60           	RTS
+00003Fr 1               
+00003Fr 1               printstr:
+00003Fr 1               	; init loop
+00003Fr 1  86 17        	STX $17
+000041r 1  84 18        	STY $18
+000043r 1  A0 00        	LDY #$00
+000045r 1               printstr_loop:
+000045r 1  B1 17        	LDA ($17),Y
+000047r 1  C8           	INY
+000048r 1  C9 00        	CMP #$00
+00004Ar 1  F0 06        	BEQ printstr_end
+00004Cr 1  20 D2 FF     	JSR $FFD2 ; call CHROUT
+00004Fr 1  4C rr rr     	JMP printstr_loop
+000052r 1               printstr_end:
+000052r 1  60           	RTS
+000053r 1               
+000053r 1               init_basic:
+000053r 1  A9 4C        	LDA #$4C
+000055r 1  85 54        	STA $54
+000057r 1  8D 10 03     	STA $0310
+00005Ar 1  A9 48        	LDA #$48   ; low  B248
+00005Cr 1  A0 B2        	LDY #$B2   ; high B248
+00005Er 1  8D 11 03     	STA $0311
+000061r 1  8C 12 03     	STY $0312
+000064r 1  A9 91        	LDA #$91   ; low B391
+000066r 1  A0 B3        	LDY #$B3   ; high B391
+000068r 1  85 05        	STA $05
+00006Ar 1  84 06        	STY $06
+00006Cr 1  A9 AA        	LDA #$AA   ; low  B1AA
+00006Er 1  A0 B1        	LDY #$B1   ; high B1AA
+000070r 1  85 03        	STA $03
+000072r 1  84 04        	STY $04
+000074r 1  A2 1C        	LDX #$1C
+000076r 1               init_basic_2:
+000076r 1  BD A2 E3     	LDA $E3A2,X
+000079r 1  95 73        	STA $73,X
+00007Br 1  CA           	DEX
+00007Cr 1  10 F8        	BPL init_basic_2
+00007Er 1  A9 03        	LDA #$03
+000080r 1  85 53        	STA $53
+000082r 1  A9 00        	LDA #$00
+000084r 1  85 68        	STA $68
+000086r 1  85 13        	STA $13
+000088r 1  85 18        	STA $18
+00008Ar 1  A2 01        	LDX #$01
+00008Cr 1  8E FD 01     	STX $01FD
+00008Fr 1  8E FC 01     	STX $01FC
+000092r 1  A2 19        	LDX #$19
+000094r 1  86 16        	STX $16
+000096r 1  38           	SEC
+000097r 1  20 9C FF     	JSR $FF9C
+00009Ar 1  86 2B        	STX $2B
+00009Cr 1  84 2C        	STY $2C
+00009Er 1  38           	SEC
+00009Fr 1  20 99 FF     	JSR $FF99
+0000A2r 1  86 37        	STX $37
+0000A4r 1  84 38        	STY $38
+0000A6r 1  86 33        	STX $33
+0000A8r 1  84 34        	STY $34
+0000AAr 1  A0 00        	LDY #$00
+0000ACr 1  98           	TYA
+0000ADr 1  91 2B        	STA ($2B),Y
+0000AFr 1  E6 2B        	INC $2B
+0000B1r 1  D0 02        	BNE init_basic_end
+0000B3r 1  E6 2C        	INC $2C
+0000B5r 1               init_basic_end:
+0000B5r 1  60           	RTS
+0000B6r 1               
+0000B6r 1               .DATA
+000000r 1  BF 4E 20 20  hello: .asciiz "\n    **** commodore 64 basic v2 ****\n\n", " 64k ram system  ", "38911 basic bytes free\n"
 000004r 1  20 20 2A 2A  
 000008r 1  2A 2A 20 43  
-000051r 1  BF 4E BF 4E  ready: .asciiz "\n\nready.\n\n"
-000055r 1  52 45 41 44  
-000059r 1  59 2E BF 4E  
+000053r 1  BF 4E 52 45  ready: .asciiz "\nready.\n\n"
+000057r 1  41 44 59 2E  
+00005Br 1  BF 4E BF 4E  
 00005Fr 1               
