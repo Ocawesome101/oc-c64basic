@@ -70,9 +70,23 @@ end
 local function yield()
 	pullEvent(0) -- this yields without discarding any event
 	local evt = pokeEvent()
-	local char
+	local char, code
 	if evt[1] == "key_down" or evt[1] == "key_up" then
 		char = utf8.char(evt[3]):upper()
+		code = evt[4]
+		--sys.ocemu.log("code = " .. code)
+
+		if code == 42 then -- left shift
+			char = "lshift"
+		elseif code == 200 or code == 208 then -- up and down arrow
+			char = "crsrUD"
+		elseif code == 203 or code == 205 then -- left and right arrow
+			char = "crsrLR"
+		elseif code == 28 then -- return
+			char = "return"
+		elseif code == 14 then -- backspace
+			char = "backspace"
+		end
 	end
 
 	if evt[1] == "key_down" then
@@ -123,7 +137,12 @@ local function pop()
 	return peek(0x100 + sp)
 end
 
-local function readAbsoluteAddr(addr)
+local function readAbsoluteAddr(addr, bug)
+	local hiAddr = addr+1
+	if bug then
+		-- accounting for the last byte vector bug (http://6502.org/tutorials/6502opcodes.html#JMP)
+		hiAddr = (addr & 0xFF00) | (hiAddr & 0x00FF)
+	end
 	return (peek(addr+1) << 8) | peek(addr)
 end
 
@@ -197,6 +216,15 @@ local operations = {
 		local addr = peek(pc)
 		a = a | peek(addr)
 		cmp(a, "nocarry")
+	end,
+	[0x06] = function() -- ASL (zeropage)
+		pc = pc + 1
+		local addr = peek(pc)
+		local value = peek(addr)
+		local bit7 = (value & 0x80) >> 7
+		poke(addr, (value << 1) & 0xFF)
+		cmp(value << 1, "nocarry")
+		fc = bit7 == 1
 	end,
 	[0x08] = function() -- PHP (implied)
 		php()
@@ -358,7 +386,7 @@ local operations = {
 	end,
 	[0x6C] = function() -- JMP (indirect)
 		local indirectAddr = readAbsoluteAddr(pc+1)
-		local addr = readAbsoluteAddr(indirectAddr) -- TODO: account for the last byte vector bug (http://6502.org/tutorials/6502opcodes.html#JMP)
+		local addr = readAbsoluteAddr(indirectAddr, "bug")
 		debug(string.format("JMP ($%x) (= JMP $%x)", indirectAddr, addr))
 		pc = addr - 1
 	end,
@@ -598,6 +626,16 @@ local operations = {
 		pc = pc + 2
 		cmp(peek(addr) - a)
 	end,
+	-- TODO: investigate at Kernal 0xEB12
+	[0xCE] = function() -- DEC (absolute)
+		local addr = readAbsoluteAddr(pc+1)
+		pc = pc + 2
+		local value = peek(addr)
+		value = value - 1
+		cmp(value, "nocarry")
+		poke(addr, value & 0xFF)
+		debug(string.format("DEC 0x%x (absolute)", addr))
+	end,
 	[0xD0] = function() -- BNE (relative)
 		pc = pc + 1
 		local rel = string.unpack("i1", string.char(peek(pc)))
@@ -641,7 +679,7 @@ local operations = {
 		local value = peek(addr)
 		value = value + 1
 		cmp(value, "nocarry")
-		poke(addr, value)
+		poke(addr, value & 0xFF)
 	end,
 	[0xE8] = function() -- INX (implied)
 		x = x + 1
@@ -658,12 +696,27 @@ local operations = {
 		pc = pc + 2
 		cmp(peek(addr) - x)
 	end,
+	[0xEE] = function() -- INC (absolute)
+		local addr = readAbsoluteAddr(pc+1)
+		pc = pc + 2
+		local value = peek(addr)
+		value = value + 1
+		cmp(value, "nocarry")
+		poke(addr, value & 0xFF)
+	end,
 	[0xF0] = function() -- BEQ (relative)
 		pc = pc + 1
 		local rel = string.unpack("i1", string.char(peek(pc)))
 		if fz then
 			pc = pc + rel
 		end
+	end,
+	[0xF9] = function() -- SBC (absolute,Y)
+		local addr = readAbsoluteAddr(pc+1) + y
+		pc = pc + 2
+		a = a - peek(addr) - 1 + (fc and 1 or 0)
+		cmp(a, nil, "overflow")
+		debug(string.format("SBC $%x", addr))
 	end,
 }
 

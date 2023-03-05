@@ -40,14 +40,6 @@ local function generateCharBuffer(code, fg, bg)
   sys.debug("Generate char buffer for " .. code .. ", " .. fg .. ", " .. bg)
   local charBuf = (charBuffers[code+1] or {sys.gpu.allocateBuffer(4, 2)})[1]
   charBuffers[code+1] = { charBuf, fg, bg }
-  local colsw
-  if code > 127 then
-    colsw = true
-    code = code - 128
-  end
-  if colsw then
-    fg, bg = bg, fg
-  end
   sys.gpu.setActiveBuffer(charBuf)
   sys.gpu.inBuffer = true
   sys.gpu.setForeground(fg)
@@ -67,14 +59,6 @@ local function drawchar(index, code, color)
     local buf = generateCharBuffer(code, fg, bg)
     sys.gpu.bitblt(0, x+1, y, 4, 2, buf)
   else
-    local colsw = false
-    if code > 127 then
-      colsw = true
-      code = code - 128
-    end
-    if colsw then
-      fg, bg = bg, fg
-    end
     sys.gpu.setForeground(fg)
     sys.gpu.setBackground(bg)
     --component.proxy(component.list("sandbox")()).log(x, y, fg, bg, color, code, draw)

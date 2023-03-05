@@ -25,7 +25,7 @@ function sys.gpu.setForeground(value)
   end
 end
 
-local ENABLE_LOG = true
+local ENABLE_LOG = false
 function sys.debug(str)
 	if ENABLE_LOG and sys.ocemu then
 		sys.ocemu.log(str)
